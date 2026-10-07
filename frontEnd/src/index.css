@@ -1,0 +1,16 @@
+* {
+  box-sizing: border-box;
+}
+
+/* Spazio per la barra di scorrimento sempre riservato: quando il pannello di una scheda si apre e la
+   pagina diventa più lunga, la barra non compare all'improvviso spostando tutto di qualche pixel */
+html {
+  scrollbar-gutter: stable;
+}
+
+body {
+  margin: 0;
+  font-family: system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: #1a1a1a;
+  background: #fff;
+}
