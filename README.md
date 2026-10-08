@@ -1,140 +1,144 @@
-# BLC – negozio di abbigliamento
+# BLC – E-commerce di abbigliamento
 
-Un piccolo e-commerce di abbigliamento: catalogo diviso per categorie, carrello, codici sconto e ordini.
-Il backend è un'API in Django REST Framework, il frontend è una single page app in React.
+![Python](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)
+![Django](https://img.shields.io/badge/Django-6-092E20?logo=django&logoColor=white)
+![DRF](https://img.shields.io/badge/DRF-3.18-A30000)
+![React](https://img.shields.io/badge/React-19-61DAFB?logo=react&logoColor=black)
+![Vite](https://img.shields.io/badge/Vite-646CFF?logo=vite&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-Supabase-4169E1?logo=postgresql&logoColor=white)
 
-È un progetto dimostrativo. Il pagamento e i dati di spedizione sono simulati e non c'è un sistema di
-utenti: servono a mostrare come funziona l'acquisto, non a vendere davvero.
+Negozio online di abbigliamento full stack: catalogo per categorie, carrello, codici sconto e ordini, con
+**API REST in Django** e **single page app in React**. Il focus è sulla correttezza del flusso d'acquisto:
+prezzi, sconti e stock sono sempre decisi dal server, mai fidandosi del browser.
 
-## Cosa si può fare
+> Progetto dimostrativo: pagamento e dati di spedizione sono simulati e non c'è un sistema di utenti.
 
-- Sfogliare il catalogo per categoria. La home mostra le prime righe di prodotti, con un pulsante per vederli tutti.
-- Aprire un prodotto: foto, descrizione, colore, disponibilità e scelta della taglia.
-- Aggiungere al carrello dalla pagina del prodotto o direttamente dalla scheda nella griglia.
-- Modificare il carrello, che resta salvato nel browser anche se si chiude la pagina.
-- Applicare un codice sconto (percentuale, con un limite di utilizzi e un importo minimo).
-- Vedere la spedizione: 10 € fissi, gratuita se gli articoli (dopo lo sconto) superano i 50 €.
-- Completare un ordine simulato. Lo stock dei prodotti si aggiorna.
-- Gestire prodotti, categorie, foto e codici sconto, e consultare gli ordini, dall'admin di Django.
+**Demo online:** https://abbigliamento2-0.vercel.app · **API:** https://abbigliamento2-0.onrender.com/api/
 
-## Tecnologie
+Per provarla: aggiungi qualche capo al carrello, inserisci il codice `BENVENUTO10` e completa il checkout (i dati
+sono finti, non viene salvato niente di personale).
 
-| Parte | Cosa |
+## Tech stack
+
+| Livello | Tecnologie |
 |---|---|
-| Backend | Python, Django 6, Django REST Framework, django-cors-headers, Pillow |
-| Database | SQLite (in sviluppo) |
-| Frontend | React 19, React Router, Vite |
-| Stile | CSS semplice, senza librerie di componenti |
+| Frontend | React 19, React Router, Vite, CSS semplice; lint con Oxlint |
+| Backend | Python, Django 6, Django REST Framework, django-cors-headers, WhiteNoise, Gunicorn |
+| Database | PostgreSQL su Supabase (produzione), SQLite (locale) |
+| Deploy | Vercel (frontend), Render (backend), Supabase (database) |
 | Test | test di Django per l'API, `node --test` per la logica del frontend |
 
-## Avvio in locale
+## Funzionalità
 
-Servono Python 3.12 o superiore e Node.js 20 o superiore (provato con Python 3.14 e Node 24).
+- Catalogo con filtro per categoria; scheda prodotto con foto, colore, disponibilità e scelta della taglia.
+- Carrello persistente nel browser (`localStorage`), modificabile dalla pagina prodotto o dalla griglia.
+- Codici sconto in percentuale con limite di utilizzi e importo minimo, ricontrollati a ogni modifica del carrello.
+- Spedizione: 10 € fissi, gratuita sopra i 50 € di articoli (dopo lo sconto).
+- Checkout simulato con validazione del modulo; l'ordine aggiorna lo stock.
+- Admin di Django per gestire prodotti, categorie, foto, codici sconto e consultare gli ordini.
 
-**Backend** (da una prima finestra del terminale):
+## Scelte progettuali
 
-```bash
-cd backEnd
-python -m venv venv
-venv\Scripts\activate          # su macOS/Linux: source venv/bin/activate
-pip install -r requirements.txt
-python manage.py migrate
-python manage.py seed_products
-python manage.py createsuperuser   # facoltativo, serve per entrare nell'admin
-python manage.py runserver
-```
+- **Il totale lo calcola sempre il backend.** Dal browser arrivano solo id prodotto, taglia, quantità e codice
+  sconto; prezzi, sconto e spedizione si leggono dal database. Il frontend li ricalcola solo per mostrarli.
+- **L'ordine è una transazione atomica.** Convalida taglie e stock, scala lo stock con un `UPDATE` condizionale
+  (sicuro anche con ordini simultanei) e consuma il codice sconto; se qualcosa fallisce non cambia niente.
+- **Prezzo storico.** Ogni riga d'ordine copia il prezzo al momento dell'acquisto.
+- **Nessun dato personale salvato.** I campi di spedizione e pagamento non vengono inviati.
+- **Rate limiting** (30 richieste/min per IP) su ordini e verifica dei codici, contro tentativi a raffica.
+- **Configurazione da variabili d'ambiente**; `DEBUG` è spento per default e la `SECRET_KEY` è obbligatoria fuori
+  dallo sviluppo locale.
+- **Query ottimizzate:** `prefetch_related` sulla lista prodotti (3 query invece di 31 con 15 prodotti).
 
-`seed_products` crea le categorie, 15 prodotti di esempio (con le foto che trova in `backEnd/media`) e due codici
-sconto. Si può rilanciare senza creare duplicati e senza azzerare lo stock.
-
-**Frontend** (da una seconda finestra):
-
-```bash
-cd frontEnd
-npm install
-npm run dev
-```
-
-Poi:
-
-- sito: http://localhost:5173
-- API: http://127.0.0.1:8000/api/
-- admin: http://127.0.0.1:8000/admin/
-
-Il sito va aperto da `localhost:5173` (non da `127.0.0.1:5173`): il backend accetta le richieste solo da quell'indirizzo.
-
-Codici sconto di esempio: `BENVENUTO10` (10%) e `SUPER20` (20%, per ordini da almeno 100 €, massimo 10 utilizzi).
-
-## API
-
-| Metodo | Indirizzo | A cosa serve |
-|---|---|---|
-| GET | `/api/products/` | Lista dei prodotti, dal più recente. Con `?category=<slug>` solo quelli di una categoria |
-| GET | `/api/products/<id>/` | Dettaglio di un prodotto |
-| GET | `/api/categories/` | Lista delle categorie |
-| POST | `/api/discount-codes/check/` | Controlla un codice sul carrello e restituisce sconto, spedizione e totale |
-| POST | `/api/orders/` | Crea un ordine e scala lo stock |
-
-## Come è fatto
+## Struttura del progetto
 
 ```
 backEnd/
-  config/                  impostazioni e URL principali del progetto Django
-  abbigliamento/           l'app del negozio
+  config/                  impostazioni e URL principali di Django
+  abbigliamento/           app del negozio
     models.py              categorie, prodotti, foto, ordini, codici sconto
-    serializers.py         da modello a JSON, e la logica con cui si crea un ordine
-    views.py, urls.py      gli endpoint
+    serializers.py         JSON e logica transazionale di creazione ordine
+    views.py, urls.py      endpoint
     admin.py               pannello di amministrazione
     tests.py               test dell'API
     management/commands/   seed_products: dati di esempio
   media/                   foto dei prodotti
 frontEnd/
-  public/                  immagine del banner e favicon
   src/
-    App.jsx                struttura della pagina e rotte
+    App.jsx                layout e rotte
     *Page.jsx, Product*.jsx, ...   pagine e componenti
-    cart.js, checkout.js, discount.js, shipping.js   logica senza interfaccia, con i suoi test (*.test.js)
-    App.css, index.css     stili
+    cart.js, checkout.js, discount.js, shipping.js   logica senza interfaccia, con test (*.test.js)
+    CartProvider.jsx, useDiscount.js   stato del carrello e verifica dello sconto
 ```
 
-Alcune scelte che vale la pena sapere:
+## Installazione in locale
 
-- **Il totale lo calcola sempre il backend.** Dal browser arrivano solo prodotti, taglie, quantità e il codice
-  sconto; i prezzi, lo sconto e la spedizione si leggono dal database. Il frontend li ricalcola solo per mostrarli
-  nel carrello.
-- **L'ordine è una transazione.** Controlla taglie, stock e codice, scala lo stock e crea l'ordine. Se qualcosa
-  non va, non cambia niente.
-- **Il carrello è nel browser** (`localStorage`) e contiene solo id, taglia e quantità. Nome, prezzo e foto si
-  leggono dall'API.
-- **Non si salvano dati personali.** I campi di spedizione e pagamento del checkout si controllano nel browser
-  ma non vengono inviati.
-- **Ordini e verifica dei codici hanno un limite di richieste** (30 al minuto per indirizzo IP).
+Servono Python 3.12+ e Node.js 20+.
+
+```bash
+git clone https://github.com/blc-js/abbigliamento2.0.git
+cd abbigliamento2.0
+```
+
+**Backend**
+
+```bash
+cd backEnd
+python -m venv venv
+venv\Scripts\activate          # macOS/Linux: source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env           # Windows: copy .env.example .env
+python manage.py migrate
+python manage.py seed_products # categorie, 15 prodotti, 2 codici sconto (ripetibile)
+python manage.py createsuperuser   # facoltativo, per l'admin
+python manage.py runserver
+```
+
+**Frontend** (in un secondo terminale)
+
+```bash
+cd frontEnd
+npm install
+cp .env.example .env.local     # facoltativo: senza, usa http://127.0.0.1:8000/api
+npm run dev
+```
+
+- Sito: http://localhost:5173 (aprilo da `localhost`, non da `127.0.0.1`: il CORS accetta solo quello)
+- API: http://127.0.0.1:8000/api/ · Admin: http://127.0.0.1:8000/admin/
+- Codici sconto di prova: `BENVENUTO10` (10%) e `SUPER20` (20%, ordini da almeno 100 €, 10 utilizzi)
+
+### Variabili d'ambiente
+
+| Variabile | Dove | Descrizione |
+|---|---|---|
+| `SECRET_KEY` | backend | Obbligatoria se `DEBUG` è spento |
+| `DEBUG` | backend | `True` solo in locale |
+| `DATABASE_URL` | backend | PostgreSQL; se assente si usa SQLite |
+| `ALLOWED_HOSTS`, `CSRF_TRUSTED_ORIGINS` | backend | Valori separati da virgola |
+| `CORS_ALLOWED_ORIGINS` | backend | Indirizzo del frontend in produzione |
+| `VITE_API_URL` | frontend | Indirizzo base dell'API |
+
+## API
+
+| Metodo | Endpoint | Descrizione |
+|---|---|---|
+| GET | `/api/products/` | Lista prodotti, dal più recente; `?category=<slug>` per filtrare |
+| GET | `/api/products/<id>/` | Dettaglio prodotto |
+| GET | `/api/categories/` | Lista categorie |
+| POST | `/api/discount-codes/check/` | Verifica un codice sul carrello: sconto, spedizione e totale |
+| POST | `/api/orders/` | Crea un ordine e scala lo stock |
 
 ## Test
 
 ```bash
-cd backEnd && python manage.py test        # API, ordini, sconti, spedizione, comando seed_products
-cd frontEnd && node --test                 # logica del carrello, checkout, sconti e spedizione
+cd backEnd && python manage.py test     # API, ordini, sconti, spedizione, seed
+cd frontEnd && node --test              # carrello, checkout, sconti, spedizione
 cd frontEnd && npm run lint
 ```
 
-## Limiti e cose da migliorare
+## Possibili sviluppi
 
-È un progetto di base e ci sono parecchie cose da sistemare.
-
-- Non ci sono utenti né login: gli ordini non sono collegati a nessuno.
-- Lo stock è uno solo per prodotto, la taglia si sceglie all'acquisto e non ha una disponibilità propria.
-  Per averla servirebbe un modello a parte (`ProductVariant`), segnato con un `TODO` in `models.py`.
-- Le regole della spedizione sono scritte due volte, nel backend e in `shipping.js`. Meglio farle arrivare dall'API.
-- La configurazione è quella di sviluppo: `SECRET_KEY`, `DEBUG`, `ALLOWED_HOSTS`, l'origine CORS e l'indirizzo
-  dell'API nel frontend (`src/api.js`) sono scritti nel codice e vanno spostati in variabili d'ambiente.
-- Le foto sono file locali in `media/`: per pubblicare il sito serve uno spazio esterno per i file.
-- Si testa la logica del frontend ma non i componenti.
-- Mancano paginazione, ricerca e ordinamento dei prodotti.
-- L'indirizzo nel footer è di esempio.
-
-## Pubblicazione
-
-Da fare. L'idea è mettere il frontend su Vercel, il backend su Render e il database PostgreSQL su Supabase.
-Prima va resa configurabile la parte descritta sopra (variabili d'ambiente, database, `ALLOWED_HOSTS`, CORS,
-indirizzo dell'API) e aggiunti un server per Django in produzione e la gestione dei file statici.
+- Utenti e login, con ordini collegati all'account.
+- Stock per taglia (modello `ProductVariant`, vedi `TODO` in `models.py`).
+- Regole di spedizione esposte dall'API invece che duplicate nel frontend.
+- Paginazione, ricerca e ordinamento; spazio esterno per le foto; test dei componenti React.

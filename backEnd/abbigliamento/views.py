@@ -51,6 +51,8 @@ class DiscountCheckView(GenericAPIView):
     throttle_scope = 'discount'
 
     def post(self, request):
+        # POST e non GET: il carrello (lista di articoli) viaggia nel corpo della richiesta.
+        # Tutta la logica è nel serializer, che restituisce l'esito già pronto in 'result'
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         return Response(serializer.validated_data['result'])

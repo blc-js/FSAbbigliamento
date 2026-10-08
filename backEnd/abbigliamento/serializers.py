@@ -90,6 +90,9 @@ class DiscountCheckSerializer(serializers.Serializer):
 
 
 class OrderCreateSerializer(serializers.Serializer):
+    """Crea un ordine. La logica sta in create() e non in una view perché deve essere
+    atomica e testabile senza passare da HTTP."""
+
     items = OrderItemInputSerializer(many=True, allow_empty=False)
     # Facoltativo: il codice si riverifica sempre qui, anche se il carrello l'aveva già controllato
     discount_code = serializers.CharField(required=False, allow_blank=True, max_length=50)
@@ -122,6 +125,8 @@ class OrderCreateSerializer(serializers.Serializer):
             if errors:
                 raise serializers.ValidationError({'items': errors})
 
+            # Controllo "gentile" per dare al cliente un messaggio chiaro; la garanzia contro
+            # gli ordini simultanei è l'UPDATE condizionale più sotto
             for product_id, quantity in requested.items():
                 product = products[product_id]
                 if quantity > product.stock:
@@ -173,6 +178,7 @@ class OrderCreateSerializer(serializers.Serializer):
                 discount_amount=discount_amount,
                 shipping_cost=shipping,
             )
+            # unit_price copia il prezzo di oggi: lo storico non cambia se il listino cambia
             OrderItem.objects.bulk_create([
                 OrderItem(
                     order=order,
@@ -207,4 +213,5 @@ class OrderSerializer(serializers.ModelSerializer):
         ]
 
     def get_subtotal(self, order):
+        # Non è una colonna: si ricava dagli altri importi per non tenere dati ridondanti da sincronizzare
         return order.total + order.discount_amount - order.shipping_cost

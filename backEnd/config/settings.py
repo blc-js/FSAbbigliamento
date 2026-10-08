@@ -14,25 +14,27 @@ import os
 from pathlib import Path
 
 import dj_database_url
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
 # Le impostazioni che cambiano tra locale e produzione arrivano da variabili d'ambiente.
-# Su Render si impostano dalla dashboard; in locale non serve impostare niente.
+# Su Render si impostano dalla dashboard; in locale si copia .env.example in .env.
+load_dotenv(BASE_DIR / '.env')
+
 
 def env_list(name):
     """Legge una variabile con valori separati da virgola e restituisce una lista."""
     return [item.strip() for item in os.environ.get(name, '').split(',') if item.strip()]
 
 
-# Render imposta da solo RENDER=true: lì DEBUG è spento. In locale è acceso, a meno che
-# la variabile DEBUG non lo imposti diversamente ("True" o "False").
-IS_RENDER = os.environ.get('RENDER') == 'true'
-DEBUG = os.environ.get('DEBUG', 'False' if IS_RENDER else 'True') == 'True'
+# DEBUG è spento per default (fail-safe): un deploy dimenticato senza configurazione non espone
+# mai pagine di debug. In locale lo si accende con DEBUG=True nel file .env.
+DEBUG = os.environ.get('DEBUG', 'False') == 'True'
 
-# In produzione la chiave è obbligatoria. Solo in locale (DEBUG attivo) c'è una chiave di ripiego.
+# La chiave è obbligatoria; solo con DEBUG attivo (sviluppo locale) esiste una chiave di ripiego.
 SECRET_KEY = os.environ.get('SECRET_KEY')
 if not SECRET_KEY:
     if not DEBUG:
@@ -114,7 +116,7 @@ DATABASES = {
     'default': dj_database_url.config(default=f'sqlite:///{BASE_DIR / "db.sqlite3"}'),
 }
 # Il pooler di Supabase non supporta i cursori lato server.
-DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True
+DATABASES['default']['DISABLE_SERVER_SIDE_CURSORS'] = True  # ignorato da SQLite
 
 
 # Password validation
@@ -139,9 +141,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/6.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'it'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Europe/Rome'
 
 USE_I18N = True
 
@@ -165,14 +167,4 @@ MEDIA_ROOT = BASE_DIR / 'media'
 REST_FRAMEWORK = {
     # Massimo di richieste al minuto (per indirizzo IP) a controllo codici sconto e ordini
     'DEFAULT_THROTTLE_RATES': {'discount': '30/min'},
-}
-
-
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
-
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
 }

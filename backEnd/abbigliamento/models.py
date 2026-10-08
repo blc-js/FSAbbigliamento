@@ -9,7 +9,12 @@ FREE_SHIPPING_ABOVE = Decimal('50.00')
 
 
 def shipping_cost_for(goods_total):
-    """Costo di spedizione per un ordine con questo importo di articoli (già scontato)."""
+    """Costo di spedizione per un ordine con questo importo di articoli (già scontato).
+
+    Unica fonte di verità delle regole: il frontend ne ha una copia (shipping.js) solo per
+    mostrare il totale nel carrello; l'importo addebitato è sempre quello calcolato qui.
+    La soglia è stretta (> 50): esattamente 50,00 € paga ancora la spedizione.
+    """
     return Decimal('0.00') if goods_total > FREE_SHIPPING_ABOVE else SHIPPING_COST
 
 
@@ -52,6 +57,7 @@ class Product(models.Model):
 
     @property
     def available_sizes(self):
+        # Fonte unica delle taglie valide: la usano sia l'API (per il selettore) sia la validazione dell'ordine
         return self.CLOTHING_SIZES if self.size_type == 'clothing' else self.SHOE_SIZES
 
     def __str__(self):
@@ -96,6 +102,8 @@ class DiscountCode(models.Model):
         return code.strip().upper()
 
     def save(self, *args, **kwargs):
+        # Normalizzare anche al salvataggio (admin incluso) garantisce che il confronto
+        # con il codice digitato dal cliente, anch'esso normalizzato, sia sempre esatto
         self.code = self.normalize(self.code)
         super().save(*args, **kwargs)
 
@@ -111,7 +119,7 @@ class DiscountCode(models.Model):
         return None
 
     def discount_for(self, subtotal):
-        """Importo dello sconto, arrotondato al centesimo."""
+        """Importo dello sconto, arrotondato al centesimo (ROUND_HALF_UP: come si arrotonda a mano)."""
         return (subtotal * self.percent / 100).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
     def __str__(self):
